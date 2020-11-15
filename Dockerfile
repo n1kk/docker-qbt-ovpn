@@ -3,7 +3,7 @@
 # Version 1.8
 
 FROM ubuntu:18.04
-MAINTAINER MarkusMcNugen
+MAINTAINER n1kk
 
 VOLUME /downloads
 VOLUME /config
@@ -18,17 +18,29 @@ RUN apt-get update \
     && apt-get install -y software-properties-common \
     && add-apt-repository ppa:qbittorrent-team/qbittorrent-stable \
     && apt-get update \
-    && apt-get install -y qbittorrent-nox openvpn curl moreutils net-tools dos2unix kmod iptables ipcalc unrar \
+    && apt-get install -y qbittorrent-nox openvpn cron curl moreutils net-tools dos2unix kmod iptables ipcalc unrar \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Add configuration and scripts
 ADD openvpn/ /etc/openvpn/
 ADD qbittorrent/ /etc/qbittorrent/
 
+RUN chmod 0744 /etc/openvpn/ovpn-restart.sh
 RUN chmod +x /etc/qbittorrent/*.sh /etc/qbittorrent/*.init /etc/openvpn/*.sh
+
+# Copy cron file to the cron.d directory
+COPY openvpn/ovpn-cron /etc/cron.d/ovpn-cron
+# Give execution rights on the cron job
+RUN chmod 0644 /etc/cron.d/ovpn-cron
+# Apply cron job
+RUN crontab /etc/cron.d/ovpn-cron
 
 # Expose ports and run
 EXPOSE 8080
 EXPOSE 8999
 EXPOSE 8999/udp
+
+CMD echo "test1"
+CMD cron && tail -f /var/log/cron.log
+
 CMD ["/bin/bash", "/etc/openvpn/start.sh"]
