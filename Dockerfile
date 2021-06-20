@@ -1,8 +1,4 @@
-# qBittorrent and OpenVPN
-#
-# Version 1.8
-
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 MAINTAINER n1kk
 
 VOLUME /downloads
@@ -40,7 +36,37 @@ EXPOSE 8080
 EXPOSE 8999
 EXPOSE 8999/udp
 
-CMD echo "test1"
 CMD cron && tail -f /var/log/cron.log
 
+# -------------
+
+ENV DANTE_VER 1.4.2
+ENV DANTE_URL https://www.inet.no/dante/files/dante-$DANTE_VER.tar.gz
+ENV DANTE_SHA 4c97cff23e5c9b00ca1ec8a95ab22972813921d7fbf60fc453e3e06382fc38a7
+ENV DANTE_FILE dante.tar.gz
+ENV DANTE_TEMP dante
+ENV DANTE_DEPS build-essential curl
+
+RUN set -xe \
+    && apt-get update \
+    && apt-get install -y $DANTE_DEPS dumb-init \
+    && mkdir $DANTE_TEMP \
+    && cd $DANTE_TEMP \
+    && curl -sSL $DANTE_URL -o $DANTE_FILE \
+    && echo "$DANTE_SHA *$DANTE_FILE" | sha256sum -c \
+    && tar xzf $DANTE_FILE --strip 1 \
+    && ./configure \
+    && make install \
+    && cd .. \
+    && rm -rf $DANTE_TEMP \
+    && apt-get purge -y --auto-remove $DANTE_DEPS \
+    && useradd -u 912 -U -d /config -s /bin/false sockd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Default configuration
+COPY sockd/sockd.conf /etc/
+
+EXPOSE 1080
+
+#---------------------
 CMD ["/bin/bash", "/etc/openvpn/start.sh"]

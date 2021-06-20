@@ -29,6 +29,8 @@ $ docker run --privileged  -d \
               -p 8080:8080 \
               -p 8999:8999 \
               -p 8999:8999/udp \
+              -e "SOCKS5_ENABLED=yes" \
+              -p 1080:1080 \
               markusmcnugen/qbittorrentvpn
 ```
 
@@ -124,3 +126,10 @@ $ docker run --privileged  -d \
 ```
 
 This will start a container as described in the "Run container from Docker registry" section.
+
+Test SOCKS% proxy
+```bash
+curl --proxy socks5://localhost:1080 https://google.com
+
+curl --proxy socks5://_CONTAINER_IP_:1080 https://google.com
+```

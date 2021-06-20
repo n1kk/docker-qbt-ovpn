@@ -31,17 +31,17 @@ if [[ $VPN_ENABLED == "yes" ]]; then
 	if (( ${exit_code_chown} != 0 || ${exit_code_chmod} != 0 )); then
 		echo "[warn] Unable to chown/chmod /config/openvpn/, assuming SMB mountpoint" | ts '%Y-%m-%d %H:%M:%.S'
 	fi
-	
+
 	# wildcard search for openvpn config files (match on first result)
 	export VPN_CONFIG=$(find /config/openvpn -maxdepth 1 -name "*.ovpn" -print -quit)
-	
+
 	# if ovpn file not found in /config/openvpn then exit
 	if [[ -z "${VPN_CONFIG}" ]]; then
 		echo "[crit] No OpenVPN config file located in /config/openvpn/ (ovpn extension), please download from your VPN provider and then restart this container, exiting..." | ts '%Y-%m-%d %H:%M:%.S' && exit 1
 	fi
-	
+
 	echo "[info] OpenVPN config file (ovpn extension) is located at ${VPN_CONFIG}" | ts '%Y-%m-%d %H:%M:%.S'
-	
+
 	# Read username and password env vars and put them in credentials.conf, then add ovpn config for credentials file
 	if [[ ! -z "${VPN_USERNAME}" ]] && [[ ! -z "${VPN_PASSWORD}" ]]; then
 		if [[ ! -e /config/openvpn/credentials.conf ]]; then
@@ -61,10 +61,10 @@ if [[ $VPN_ENABLED == "yes" ]]; then
 			sed -i "1s/.*/auth-user-pass credentials.conf\n/" ${VPN_CONFIG}
 		fi
 	fi
-	
+
 	# convert CRLF (windows) to LF (unix) for ovpn
 	/usr/bin/dos2unix "${VPN_CONFIG}" 1> /dev/null
-	
+
 	# parse values from ovpn file
 	export vpn_remote_line=$(cat "${VPN_CONFIG}" | grep -P -o -m 1 '(?<=^remote\s)[^\n\r]+' | sed -e 's~^[ \t]*~~;s~[ \t]*$~~')
 	if [[ ! -z "${vpn_remote_line}" ]]; then
@@ -97,12 +97,12 @@ if [[ $VPN_ENABLED == "yes" ]]; then
 			export VPN_PROTOCOL="udp"
 		fi
 	fi
-	
+
 	# required for use in iptables
 	if [[ "${VPN_PROTOCOL}" == "tcp-client" ]]; then
 		export VPN_PROTOCOL="tcp"
 	fi
-	
+
 	VPN_DEVICE_TYPE=$(cat "${VPN_CONFIG}" | grep -P -o -m 1 '(?<=^dev\s)[^\r\n\d]+' | sed -e 's~^[ \t]*~~;s~[ \t]*$~~')
 	if [[ ! -z "${VPN_DEVICE_TYPE}" ]]; then
 		export VPN_DEVICE_TYPE="${VPN_DEVICE_TYPE}0"
@@ -166,6 +166,9 @@ if [[ $VPN_ENABLED == "yes" ]]; then
 	# give openvpn some time to connect
 	sleep 5
 	#exec /bin/bash /etc/openvpn/openvpn.init start &
+	if [[ $SOCKS5_ENABLED == "yes" ]]; then
+  	dumb-init sockd &
+	fi
 	exec /bin/bash /etc/qbittorrent/iptables.sh
 else
 	exec /bin/bash /etc/qbittorrent/start.sh
